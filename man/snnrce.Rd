@@ -2,58 +2,72 @@
 % Please edit documentation in R/SNNRCE.R
 \name{snnrce}
 \alias{snnrce}
-\title{Train the SNNRCE model}
+\title{SNNRCE method}
 \usage{
-snnrce(x, y, dist = "matrix", alpha = 0.1)
+snnrce(x, y, x.inst = TRUE, dist = "Euclidean", alpha = 0.1)
 }
 \arguments{
-\item{x}{A object that can be coerced as matrix.
-This object have various interpretations depending on the value set in \code{dist} argument.
-See \code{dist} argument.}
+\item{x}{A object that can be coerced as matrix. This object has two possible 
+interpretations according to the value set in the \code{x.inst} argument:
+a matrix with the training instances where each row represents a single instance
+or a precomputed distance matrix between the training examples.}
 
-\item{y}{A vector with the labels of training instances. In this vector the unlabeled instances
-are specified with the value \code{NA}.}
+\item{y}{A vector with the labels of the training instances. In this vector 
+the unlabeled instances are specified with the value \code{NA}.}
 
-\item{dist}{Distance information. Valid options are:
-\itemize{
-   \item \code{"matrix"}: this string indicates that \code{x} is a distance matrix.
-   \item \emph{string}: the name of a distance method available in \code{proxy} package.
-   In this case \code{x} is interpreted as a matrix of instances.
-   \item \emph{function}: a function defined by the user that computes the distance between two vectors.
-   This function is called passing the vectors in the firsts two arguments. If the function have others arguments,
-   those arguments must be have default values.
-   In this case \code{x} is interpreted as a matrix of instances.
-}}
+\item{x.inst}{A boolean value that indicates if \code{x} is or not an instance matrix.
+Default is \code{TRUE}.}
+
+\item{dist}{A distance function available in the \code{proxy} package to compute 
+the distance matrix in the case that \code{x.inst} is \code{TRUE}.}
 
 \item{alpha}{Rejection threshold to test the critical region. Default is 0.1.}
 }
 \value{
-The trained model stored in a list with the following named values:
+A list object of class "snnrce" containing:
 \describe{
-  \item{base.m}{The model trained.}
-  \item{bclassif}{The classifier specification returned by \code{bClassifOneNN} function.}
-  \item{dist}{The value of \code{dist} argument.
-  This value is optionally returned when the argument \code{dist} is different from "matrix".}
-  \item{included.insts}{The indexes of the training instances used to train \code{base.m} model.
+  \item{model}{The final base classifier trained using the enlarged labeled set.}
+  \item{instances.index}{The indexes of the training instances used to 
+  train the \code{model}. These indexes include the initial labeled instances
+  and the newly labeled instances.
   Those indexes are relative to \code{x} argument.}
-  \item{tr.insts}{The training instances corresponding to the indexes returned in \code{included.insts}.
-   This value is optionally returned when the \code{dist} argument is different from "matrix".}
-  \item{labels.map}{An internal map used for the labels.}
+  \item{classes}{The levels of \code{y} factor.}
+  \item{x.inst}{The value provided in the \code{x.inst} argument.}
+  \item{dist}{The value provided in the \code{dist} argument when x.inst is \code{TRUE}.}
+  \item{xtrain}{A matrix with the subset of training instances referenced by the indexes 
+  \code{instances.index} when x.inst is \code{TRUE}.}
 }
 }
 \description{
-Builds and trains a model to predict the label of instances,
-according to SNNRCE algorithm.
+SNNRCE (Self-training Nearest Neighbor Rule using Cut Edges) is a variant 
+of the self-training classification method (\code{\link{selfTraining}}) with a different 
+addition mechanism and a fixed learning scheme (1-NN). SNNRCE uses an amending scheme 
+to avoid the introduction of noisy examples into the enlarged labeled set.
+The mislabeled examples are identified using the local information provided 
+by the neighborhood graph. A statistical test using cut edge weight is used to modify 
+the labels of the missclassified examples.
+}
+\details{
+SNNRCE initiates the self-labeling process by training a 1-NN from the original 
+labeled set. This method attempts to reduce the noise in examples by labeling those instances 
+with no cut edges in the initial stages of self-labeling learning. 
+These highly confident examples are added into the training set. 
+The remaining examples follow the standard self-training process until a minimum number 
+of examples will be labeled for each class. A statistical test using cut edge weight is used 
+to modify the labels of the missclassified examples The value of the \code{alpha} argument 
+defines the critical region where the candidates examples are tested. The higher this value 
+is, the more relaxed it is the selection of the examples that are considered mislabeled.
 }
 \examples{
-# This example is part of SNNRCE demo.
-# Use demo(SNNRCE) to see all the examples.
+
+library(ssc)
 
 ## Load Wine data set
 data(wine)
 
-x <- wine[, -14] # instances without classes
-y <- wine[, 14] # the classes
+cls <- which(colnames(wine) == "Wine")
+x <- wine[, -cls] # instances without classes
+y <- wine[, cls] # the classes
 x <- scale(x) # scale the attributes
 
 ## Prepare data
@@ -71,15 +85,22 @@ tst.idx <- setdiff(1:length(y), tra.idx)
 xitest <- x[tst.idx,] # testing instances
 yitest <- y[tst.idx] # classes of testing instances
 
-## Example: Using the Euclidean distance in proxy package.
-m <- snnrce(xtrain, ytrain, dist = "Euclidean")
-pred <- predict(m, xitest)
-caret::confusionMatrix(table(pred, yitest))
+## Example: Training from a set of instances with 1-NN as base classifier.
+m1 <- snnrce(x = xtrain, y = ytrain,  dist = "Euclidean")
+pred1 <- predict(m1, xitest)
+table(pred1, yitest)
+
+## Example: Training from a distance matrix with 1-NN as base classifier.
+dtrain <- proxy::dist(x = xtrain, method = "euclidean", by_rows = TRUE)
+m2 <- snnrce(x = dtrain, y = ytrain, x.inst = FALSE)
+ditest <- proxy::dist(x = xitest, y = xtrain[m2$instances.index,],
+                      method = "euclidean", by_rows = TRUE)
+pred2 <- predict(m2, ditest)
+table(pred2, yitest)
 
 }
 \references{
 Yu Wang, Xiaoyan Xu, Haifeng Zhao, and Zhongsheng Hua.\cr
 \emph{Semisupervised learning based on nearest neighbor rule and cut edges.}\cr
-Knowledge-Based Systems, 23(6):547–554, 2010. ISSN 0950-7051. doi: http://dx.doi.org/10.1016/j.knosys.2010.03.012.
+Knowledge-Based Systems, 23(6):547-554, 2010. ISSN 0950-7051. doi: http://dx.doi.org/10.1016/j.knosys.2010.03.012.
 }
-

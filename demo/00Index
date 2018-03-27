@@ -1,7 +1,11 @@
-CoBC          Demostrates how to train and predict using Co-bagging algorithm
-Democratic    Demostrates how to train and predict using Democratic algorithm
-SelfTraining  Demostrates how to train and predict using Self-Training algorithm
-SETRED        Demostrates how to train and predict using SETRED algorithm
-SNNRCE        Demostrates how to train and predict using SNNRCE algorithm
-TriTraining   Demostrates how to train and predict using Tri-training algorithm
-CoffeeEx      Demostrates some examples using the Coffee Time Series dataset
+CoBC               Demostrates how to use the coBC function
+CoBCG              Demostrates how to use the coBCG function
+Democratic         Demostrates how to use the democratic function
+DemocraticG        Demostrates how to use the democraticG function
+SelfTraining       Demostrates how to use the selfTraining function
+SelfTrainingG      Demostrates how to use the selfTrainingG function
+SETRED             Demostrates how to use the setred function
+SETREDG            Demostrates how to use the setredG function
+SNNRCE             Demostrates how to use the snnrce function
+TriTraining        Demostrates how to use the triTraining function
+TriTrainingG       Demostrates how to use the triTrainingG function

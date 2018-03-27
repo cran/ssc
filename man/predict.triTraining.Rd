@@ -2,30 +2,26 @@
 % Please edit documentation in R/TriTraining.R
 \name{predict.triTraining}
 \alias{predict.triTraining}
-\title{Model Predictions}
+\title{Predictions of the Tri-training method}
 \usage{
 \method{predict}{triTraining}(object, x, ...)
 }
 \arguments{
-\item{object}{TriTraining model object built with \code{\link{triTraining}} function.}
+\item{object}{Tri-training model built with the \code{\link{triTraining}} function.}
 
 \item{x}{A object that can be coerced as matrix.
-Depending on how was the model built, \code{x} is interpreted as a matrix
-with the distances between the unseen instances and the selected training instances,
+Depending on how was the model built, \code{x} is interpreted as a matrix 
+with the distances between the unseen instances and the selected training instances, 
 or a matrix of instances.}
 
-\item{...}{Additional objects that can be coerced as matrix.
-Depending on how was the model built, this objects are used or ignored.
-This objects are interpreted as matrices of distances between the unseen instances
-and the selected training instances.}
+\item{...}{This parameter is included for compatibility reasons.}
 }
 \value{
-Vector with labels of instances.
+Vector with the labels assigned.
 }
 \description{
-Predicts the label of instances according to TriTraining model.
+Predicts the label of instances according to the \code{triTraining} model.
 }
 \details{
 For additional help see \code{\link{triTraining}} examples.
 }
-

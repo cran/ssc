@@ -2,63 +2,82 @@
 % Please edit documentation in R/TriTraining.R
 \name{triTraining}
 \alias{triTraining}
-\title{Train the Tri-training model}
+\title{Tri-training method}
 \usage{
-triTraining(x, y, bclassif = bClassifOneNN(), dist = "matrix")
+triTraining(x, y, x.inst = TRUE, learner, learner.pars = NULL,
+  pred = "predict", pred.pars = NULL)
 }
 \arguments{
-\item{x}{A object that can be coerced as matrix.
-This object have various interpretations depending on the value set in \code{dist} argument.
-See \code{dist} argument.}
+\item{x}{A object that can be coerced as matrix. This object has two possible 
+interpretations according to the value set in the \code{x.inst} argument:
+a matrix with the training instances where each row represents a single instance
+or a precomputed (distance or kernel) matrix between the training examples.}
 
-\item{y}{A vector with the labels of training instances. In this vector the unlabeled instances
-are specified with the value \code{NA}.}
+\item{y}{A vector with the labels of the training instances. In this vector 
+the unlabeled instances are specified with the value \code{NA}.}
 
-\item{bclassif}{Base classifier specification. Default is \code{bClassifOneNN()}. For defining new base classifiers
-see \code{\link{bClassif}}.}
+\item{x.inst}{A boolean value that indicates if \code{x} is or not an instance matrix.
+Default is \code{TRUE}.}
 
-\item{dist}{Distance information. Valid options are:
-\itemize{
-   \item \code{"matrix"}: this string indicates that \code{x} is a distance matrix.
-   \item \emph{string}: the name of a distance method available in \code{proxy} package.
-   In this case \code{x} is interpreted as a matrix of instances.
-   \item \emph{function}: a function defined by the user that computes the distance between two vectors.
-   This function is called passing the vectors in the firsts two arguments. If the function have others arguments,
-   those arguments must be have default values.
-   In this case \code{x} is interpreted as a matrix of instances.
-}}
+\item{learner}{either a function or a string naming the function for 
+training a supervised base classifier, using a set of instances
+(or optionally a distance matrix) and it's corresponding classes.}
+
+\item{learner.pars}{A list with additional parameters for the
+\code{learner} function if necessary.
+Default is \code{NULL}.}
+
+\item{pred}{either a function or a string naming the function for
+predicting the probabilities per classes,
+using the base classifiers trained with the \code{learner} function.
+Default is \code{"predict"}.}
+
+\item{pred.pars}{A list with additional parameters for the
+\code{pred} function if necessary.
+Default is \code{NULL}.}
 }
 \value{
-The trained model stored in a list with the following named values:
+A list object of class "triTraining" containing:
 \describe{
-  \item{models}{A list with the models (classifiers) trained.}
-  \item{bclassif}{The value of \code{bclassif} argument.}
-  \item{dist}{The value of \code{dist} argument.
-  This value is optionally returned when the argument \code{dist} is different from "matrix".}
-  \item{included.insts}{The indexes of the training instances used.
-  This set is the union of the indexes used to train each model in \code{models}.
-  These indexes are relative to \code{x} argument.}
-  \item{indexes}{ A list of vectors. Each vector indicates the indexes of the instances
-  used to train the corresponding model in \code{models}. For example, the instances used to train
-  \code{models[1]} are \code{x[included.insts[indexes[1]], ]}.}
-  \item{tr.insts}{The training instances corresponding to the indexes returned in \code{included.insts}.
-   This value is optionally returned when the \code{dist} argument is different from "matrix".}
-  \item{labels.map}{An internal map used for the labels.}
+  \item{model}{The final three base classifiers trained using the enlarged labeled set.}
+  \item{model.index}{List of three vectors of indexes related to the training instances 
+  used per each classifier. These indexes are relative to the \code{y} argument.}
+  \item{instances.index}{The indexes of all training instances used to
+  train the three models. These indexes include the initial labeled instances
+  and the newly labeled instances. These indexes are relative to the \code{y} argument.}
+  \item{model.index.map}{List of three vectors with the same information in \code{model.index}
+  but the indexes are relative to \code{instances.index} vector.}
+  \item{classes}{The levels of \code{y} factor.}
+  \item{pred}{The function provided in the \code{pred} argument.}
+  \item{pred.pars}{The list provided in the \code{pred.pars} argument.}
+  \item{x.inst}{The value provided in the \code{x.inst} argument.}
 }
 }
 \description{
-Builds and trains a model to predict the label of instances,
-according to Tri-training algorithm.
+Tri-training is a semi-supervised learning algorithm with a co-training 
+style. This algorithm trains three classifiers with the same learning scheme from a 
+reduced set of labeled examples. For each iteration, an unlabeled example is labeled 
+for a classifier if the other two classifiers agree on the labeling proposed.
+}
+\details{
+Tri-training initiates the self-labeling process by training three models from the 
+original labeled set, using the \code{learner} function specified. 
+In each iteration, the algorithm detects unlabeled examples on which two classifiers 
+agree with the classification and includes these instances in the enlarged set of the 
+third classifier under certain conditions. The generation of the final hypothesis is 
+produced via the majority voting. The iteration process ends when no changes occur in 
+any model during a complete iteration.
 }
 \examples{
-# This example is part of TriTraining demo.
-# Use demo(TriTraining) to see all the examples.
+
+library(ssc)
 
 ## Load Wine data set
 data(wine)
 
-x <- wine[, -14] # instances without classes
-y <- wine[, 14] # the classes
+cls <- which(colnames(wine) == "Wine")
+x <- wine[, -cls] # instances without classes
+y <- wine[, cls] # the classes
 x <- scale(x) # scale the attributes
 
 ## Prepare data
@@ -76,15 +95,64 @@ tst.idx <- setdiff(1:length(y), tra.idx)
 xitest <- x[tst.idx,] # testing instances
 yitest <- y[tst.idx] # classes of testing instances
 
-## Example: Using the Euclidean distance in proxy package.
-m <- triTraining(xtrain, ytrain, dist = "Euclidean")
-pred <- predict(m, xitest)
-caret::confusionMatrix(table(pred, yitest))
+## Example: Training from a set of instances with 1-NN as base classifier.
+set.seed(1)
+m1 <- triTraining(x = xtrain, y = ytrain, 
+                  learner = caret::knn3, 
+                  learner.pars = list(k = 1),
+                  pred = "predict")
+pred1 <- predict(m1, xitest)
+table(pred1, yitest)
+
+## Example: Training from a distance matrix with 1-NN as base classifier.
+dtrain <- proxy::dist(x = xtrain, method = "euclidean", by_rows = TRUE)
+set.seed(1)
+m2 <- triTraining(x = dtrain, y = ytrain, x.inst = FALSE,
+                  learner = ssc::oneNN, 
+                  pred = "predict",
+                  pred.pars = list(distance.weighting = "none"))
+ditest <- proxy::dist(x = xitest, y = xtrain[m2$instances.index,],
+                      method = "euclidean", by_rows = TRUE)
+pred2 <- predict(m2, ditest)
+table(pred2, yitest)
+
+## Example: Training from a set of instances with SVM as base classifier.
+learner <- e1071::svm
+learner.pars <- list(type = "C-classification", kernel="radial", 
+                     probability = TRUE, scale = TRUE)
+pred <- function(m, x){
+  r <- predict(m, x, probability = TRUE)
+  prob <- attr(r, "probabilities")
+  prob
+}
+set.seed(1)
+m3 <- triTraining(x = xtrain, y = ytrain, 
+                  learner = learner, 
+                  learner.pars = learner.pars, 
+                  pred = pred)
+pred3 <- predict(m3, xitest)
+table(pred3, yitest)
+
+## Example: Training from a set of instances with Naive-Bayes as base classifier.
+set.seed(1)
+m4 <- triTraining(x = xtrain, y = ytrain, 
+                  learner = function(x, y) e1071::naiveBayes(x, y), 
+                  pred.pars = list(type = "raw"))
+pred4 <- predict(m4, xitest)
+table(pred4, yitest)
+
+## Example: Training from a set of instances with C5.0 as base classifier.
+set.seed(1)
+m5 <- triTraining(x = xtrain, y = ytrain, 
+                  learner = C50::C5.0, 
+                  pred.pars = list(type = "prob"))
+pred5 <- predict(m5, xitest)
+table(pred5, yitest)
+
 
 }
 \references{
 ZhiHua Zhou and Ming Li.\cr
 \emph{Tri-training: exploiting unlabeled data using three classifiers.}\cr
-IEEE Transactions on Knowledge and Data Engineering, 17(11):1529–1541, Nov 2005. ISSN 1041-4347. doi: 10.1109/TKDE.2005. 186.
+IEEE Transactions on Knowledge and Data Engineering, 17(11):1529-1541, Nov 2005. ISSN 1041-4347. doi: 10.1109/TKDE.2005. 186.
 }
-

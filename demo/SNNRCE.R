@@ -4,8 +4,9 @@ library(ssc)
 ## Load Wine data set
 data(wine)
 
-x <- wine[, -14] # instances without classes
-y <- wine[, 14] # the classes
+cls <- which(colnames(wine) == "Wine")
+x <- wine[, -cls] # instances without classes
+y <- wine[, cls] # the classes
 x <- scale(x) # scale the attributes
 
 ## Prepare data
@@ -23,27 +24,16 @@ tst.idx <- setdiff(1:length(y), tra.idx)
 xitest <- x[tst.idx,] # testing instances
 yitest <- y[tst.idx] # classes of testing instances
 
-## Example: Using the Euclidean distance in proxy package.
-m <- snnrce(xtrain, ytrain, dist = "Euclidean")
-pred <- predict(m, xitest)
-caret::confusionMatrix(table(pred, yitest))
+## Example: Training from a set of instances with 1-NN as base classifier.
+m1 <- snnrce(x = xtrain, y = ytrain,  dist = "Euclidean")
+pred1 <- predict(m1, xitest)
+table(pred1, yitest)
 
-## Example: Using a defined distance function
-distFun <- function(x, y){
-  proxy::dist(x, y, method = "Minkowski", p = 3, by_rows = FALSE)
-}
-m2 <- snnrce(xtrain, ytrain, dist = distFun)
-pred2 <- predict(m2, xitest)
-caret::confusionMatrix(table(pred2, yitest))
-
-## Example: Using distance matrices instead of the instances
-# Compute distances between training instances
+## Example: Training from a distance matrix with 1-NN as base classifier.
 dtrain <- proxy::dist(x = xtrain, method = "euclidean", by_rows = TRUE)
-m3 <- snnrce(dtrain, ytrain)
-# Compute distances between testing instances and training instances
-# used to build the model. The testing distances are expected by rows.
-# m3$included.insts - indexes of instances used to build the model m3
-ditest <- proxy::dist(x = xitest, y = xtrain[m3$included.insts,],
+m2 <- snnrce(x = dtrain, y = ytrain, x.inst = FALSE)
+ditest <- proxy::dist(x = xitest, y = xtrain[m2$instances.index,],
                       method = "euclidean", by_rows = TRUE)
-pred3 <- predict(m3, ditest)
-caret::confusionMatrix(table(pred3, yitest))
+pred2 <- predict(m2, ditest)
+table(pred2, yitest)
+

@@ -2,75 +2,84 @@
 % Please edit documentation in R/Democratic.R
 \name{democratic}
 \alias{democratic}
-\title{Train the Democratic model}
+\title{Democratic method}
 \usage{
-democratic(x, y, bclassifs, dist = "matrix", dist.use = NULL)
+democratic(x, y, x.inst = TRUE, learners, learners.pars = NULL,
+  preds = rep("predict", length(learners)), preds.pars = NULL)
 }
 \arguments{
-\item{x}{A object that can be coerced as matrix.
-This object have various interpretations depending on the value set in \code{dist} argument.
-See \code{dist} argument.}
+\item{x}{A object that can be coerced as matrix. This object has two possible 
+interpretations according to the value set in the \code{x.inst} argument:
+a matrix with the training instances where each row represents a single instance
+or a precomputed (distance or kernel) matrix between the training examples.}
 
-\item{y}{A vector with the labels of training instances. In this vector the unlabeled instances
-are specified with the value \code{NA}.}
+\item{y}{A vector with the labels of the training instances. In this vector 
+the unlabeled instances are specified with the value \code{NA}.}
 
-\item{bclassifs}{A list with the classifiers specification.
-For defining new base classifiers see \code{\link{bClassif}}.}
+\item{x.inst}{A boolean value that indicates if \code{x} is or not an instance matrix.
+Default is \code{TRUE}.}
 
-\item{dist}{Distance information. Valid options are:
-\itemize{
-   \item \code{"matrix"}: this string indicates that \code{x} is a distance matrix or a list of distance matrices.
-   \item \emph{string}: the name of a distance method available in \code{proxy} package.
-   In this case \code{x} is interpreted as a matrix of instances.
-   \item \emph{function}: a function defined by the user that computes the distance between two vectors.
-   This function is called passing the vectors in the firsts two arguments. If the function have others arguments,
-   those arguments must be have default values.
-   In this case \code{x} is interpreted as a matrix of instances.
-}}
+\item{learners}{A list of functions or strings naming the functions for 
+training the different supervised base classifiers.}
 
-\item{dist.use}{Boolean matrix that indicates which base classifier uses each distance in case that more
-than one distance is supplied. Each row represents a classifier and each column a distance.}
+\item{learners.pars}{A list with the set of additional parameters for each
+learner functions if necessary.
+Default is \code{NULL}.}
+
+\item{preds}{A list of functions or strings naming the functions for
+predicting the probabilities per classes,
+using the base classifiers trained with the functions defined in \code{learners}.
+Default is \code{"predict"} function for each learner in \code{learners}.}
+
+\item{preds.pars}{A list with the set of additional parameters for each
+function in \code{preds} if necessary.
+Default is \code{NULL}.}
 }
 \value{
-The trained model stored in a list with the following named values:
+A list object of class "democratic" containing:
 \describe{
-  \item{models}{A list that have a model trained for each classifier specification
-  in \code{bclassifs} argument.}
-  \item{bclassif}{The value of \code{bclassif} argument.}
-  \item{dist}{The value of \code{dist} argument.
-  This value is optionally returned when the argument \code{dist} is different from "matrix".}
-  \item{dist.use}{The value of \code{dist.use} argument.}
   \item{W}{A vector with the confidence-weighted vote assigned to each classifier.}
-  \item{included.insts}{The indexes of the training instances used.
-  This set is the union of the indexes used to train each model in \code{models}.
-  These indexes are relative to \code{x} argument.}
-  \item{indexes}{ A list of vectors. Each vector indicates the indexes of the instances
-  used to train the corresponding model in \code{models}. For example, the instances used to train
-  \code{models[1]} are \code{x[included.insts[indexes[1]], ]}.}
-  \item{tr.insts}{The training instances corresponding to the indexes returned in \code{included.insts}.
-  This value is optionally returned when the \code{dist} argument is different from "matrix".}
-  \item{ncls}{The number of classes in the training set.}
-  \item{labels.map}{An internal map used for the labels.}
+  \item{model}{A list with the final N base classifiers trained using the 
+  enlarged labeled set.}
+  \item{model.index}{List of N vectors of indexes related to the training instances 
+  used per each classifier. These indexes are relative to the \code{y} argument.}
+  \item{instances.index}{The indexes of all training instances used to
+  train the N \code{models}. These indexes include the initial labeled instances
+  and the newly labeled instances. These indexes are relative to the \code{y} argument.}
+  \item{model.index.map}{List of three vectors with the same information in \code{model.index}
+  but the indexes are relative to \code{instances.index} vector.}
+  \item{classes}{The levels of \code{y} factor.}
+  \item{preds}{The functions provided in the \code{preds} argument.}
+  \item{preds.pars}{The set of lists provided in the \code{preds.pars} argument.}
+  \item{x.inst}{The value provided in the \code{x.inst} argument.}
 }
 }
 \description{
-Builds and trains a model to predict the label of instances,
-according to Democratic algorithm.
+Democratic Co-Learning is a semi-supervised learning algorithm with a 
+co-training style. This algorithm trains N classifiers with different learning schemes 
+defined in list \code{gen.learners}. During the iterative process, the multiple classifiers
+with different inductive biases label data for each other.
+}
+\details{
+This method trains an ensemble of diverse classifiers. To promote the initial diversity 
+the classifiers must represent different learning schemes.
+When x.inst is \code{FALSE} all \code{learners} defined must be able to learn a classifier
+from the precomputed matrix in \code{x}.
+The iteration process of the algorithm ends when no changes occurs in 
+any model during a complete iteration.
+The generation of the final hypothesis is 
+produced via a weigthed majority voting.
 }
 \examples{
-
-# Note: democratic assumes that the classifiers provided are from different
-# learning paradigms. In this examples we simulated this requirement by using two
-# 1-NN classifiers with different distance measures instead of two different
-# learning paradigms.
 
 library(ssc)
 
 ## Load Wine data set
 data(wine)
 
-x <- wine[, -14] # instances without classes
-y <- wine[, 14] # the classes
+cls <- which(colnames(wine) == "Wine")
+x <- wine[, -cls] # instances without classes
+y <- wine[, cls] # the classes
 x <- scale(x) # scale the attributes
 
 ## Prepare data
@@ -88,39 +97,37 @@ tst.idx <- setdiff(1:length(y), tra.idx)
 xitest <- x[tst.idx,] # testing instances
 yitest <- y[tst.idx] # classes of testing instances
 
-## Example
-bclassifs <- list(bClassifOneNN(), bClassifOneNN())
-dist <- list("Euclidean", "Manhattan")
-dist.use <- matrix(
-  data = c(
-#   Euclidean Manhattan
-    TRUE,     FALSE,    # First  1-NN
-    FALSE,    TRUE      # Second 1-NN
-  ),
-  nrow = 2, byrow = TRUE
+## Example: Training from a set of instances with 
+# 1-NN and C-svc (SVM) as base classifiers.
+# knn3 learner
+library(caret)
+knn <- knn3             # learner function
+knn.pars <- list(k = 1) # parameters for learner function
+knn.prob <- predict     # function to predict probabilities
+knn.prob.pars <- NULL   # parameters for prediction function
+
+# ksvm learner
+library(kernlab)
+svm <- ksvm             # learner function
+svm.pars <- list(       # parameters for learner function
+  type = "C-svc",  C = 1, 
+  kernel = "rbfdot", kpar = list(sigma = 0.048),
+  prob.model = TRUE,
+  scaled = FALSE
 )
-m <- democratic(x = xtrain, y = ytrain,
-                bclassifs, dist, dist.use)
-pred <- predict(m, xitest)
-caret::confusionMatrix(table(pred, yitest))
+svm.prob <- predict     # function to predict probabilities
+svm.prob.pars <- list(  # parameters for prediction function
+  type = "probabilities"
+)
 
-## Example: Using distance matrices instead of the instances
-dtEuclidean <- proxy::dist(x = xtrain, method = "Euclidean", by_rows = TRUE)
-dtManhattan <- proxy::dist(x = xtrain, method = "Manhattan", by_rows = TRUE)
-m2 <- democratic(x = list(dtEuclidean, dtManhattan), y = ytrain,
-                bclassifs, dist = "matrix", dist.use = dist.use)
+# train a model
+m <- democratic(x = xtrain, y = ytrain, 
+                learners = list(knn, svm), 
+                learners.pars = list(knn.pars, svm.pars), 
+                preds = list(knn.prob, svm.prob), 
+                preds.pars = list(knn.prob.pars, svm.prob.pars))
+# predict classes
+m.pred <- predict(m, xitest)
+table(m.pred, yitest)
 
-ditEuclidean <- proxy::dist(x = xitest, y = xtrain[m2$included.insts,],
-                            method = "Euclidean", by_rows = TRUE)
-ditManhattan <- proxy::dist(x = xitest, y = xtrain[m2$included.insts,],
-                            method = "Manhattan", by_rows = TRUE)
-pred <- predict(m2, ditEuclidean, ditManhattan)
-caret::confusionMatrix(table(pred, yitest))
 }
-\references{
-Yan Zhou and Sally Goldman.\cr
-\emph{Democratic co-learning.}\cr
-In IEEE 16th International Conference on Tools with Artificial Intelligence (ICTAI),
-pages 594–602. IEEE, Nov 2004. doi: 10.1109/ICTAI.2004.48.
-}
-

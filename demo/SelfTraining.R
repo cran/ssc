@@ -4,8 +4,9 @@ library(ssc)
 ## Load Wine data set
 data(wine)
 
-x <- wine[, -14] # instances without classes
-y <- wine[, 14] # the classes
+cls <- which(colnames(wine) == "Wine")
+x <- wine[, -cls] # instances without classes
+y <- wine[, cls] # the classes
 x <- scale(x) # scale the attributes
 
 ## Prepare data
@@ -23,27 +24,55 @@ tst.idx <- setdiff(1:length(y), tra.idx)
 xitest <- x[tst.idx,] # testing instances
 yitest <- y[tst.idx] # classes of testing instances
 
-## Example: Using the Euclidean distance in proxy package.
-m <- selfTraining(xtrain, ytrain, dist = "Euclidean")
-pred <- predict(m, xitest)
-caret::confusionMatrix(table(pred, yitest))
+## Example: Training from a set of instances with 1-NN as base classifier.
+m1 <- selfTraining(x = xtrain, y = ytrain, 
+                   learner = caret::knn3, 
+                   learner.pars = list(k = 1),
+                   pred = "predict")
+pred1 <- predict(m1, xitest)
+table(pred1, yitest)
 
-## Example: Using a defined distance function
-distFun <- function(x, y){
-  proxy::dist(x, y, method = "Minkowski", p = 3, by_rows = FALSE)
-}
-m2 <- selfTraining(xtrain, ytrain, dist = distFun)
-pred2 <- predict(m2, xitest)
-caret::confusionMatrix(table(pred2, yitest))
-
-## Example: Using distance matrices instead of the instances
-# Compute distances between training instances
-dtrain <- proxy::dist(x = xtrain, method = "euclidean", by_rows = TRUE)
-m3 <- selfTraining(dtrain, ytrain)
-# Compute distances between testing instances and training instances
-# used to build the model. The testing distances are expected by rows.
-# m3$included.insts - indexes of instances used to build the model m3
-ditest <- proxy::dist(x = xitest, y = xtrain[m3$included.insts,],
+## Example: Training from a distance matrix with 1-NN as base classifier.
+dtrain <- as.matrix(proxy::dist(x = xtrain, method = "euclidean", by_rows = TRUE))
+m2 <- selfTraining(x = dtrain, y = ytrain, x.inst = FALSE,
+                   learner = ssc::oneNN, 
+                   pred = "predict",
+                   pred.pars = list(distance.weighting = "none"))
+ditest <- proxy::dist(x = xitest, y = xtrain[m2$instances.index,],
                       method = "euclidean", by_rows = TRUE)
-pred3 <- predict(m3, ditest)
-caret::confusionMatrix(table(pred3, yitest))
+pred2 <- predict(m2, ditest)
+table(pred2, yitest)
+
+## Example: Training from a set of instances with SVM as base classifier.
+learner <- e1071::svm
+learner.pars <- list(type = "C-classification", kernel="radial", 
+                     probability = TRUE, scale = TRUE)
+pred <- function(m, x){
+  r <- predict(m, x, probability = TRUE)
+  prob <- attr(r, "probabilities")
+  prob
+}
+m3 <- selfTraining(x = xtrain, y = ytrain, 
+                   learner = learner, 
+                   learner.pars = learner.pars, 
+                   pred = pred)
+pred3 <- predict(m3, xitest)
+table(pred3, yitest)
+
+## Example: Training from a set of instances with Naive-Bayes as base classifier.
+m4 <- selfTraining(x = xtrain, y = ytrain, 
+                   learner = function(x, y) e1071::naiveBayes(x, y), 
+                   pred = "predict",
+                   pred.pars = list(type = "raw"))
+pred4 <- predict(m4, xitest)
+table(pred4, yitest)
+
+## Example: Training from a set of instances with C5.0 as base classifier.
+m5 <- selfTraining(x = xtrain, y = ytrain, 
+                   learner = C50::C5.0, 
+                   pred = "predict",
+                   pred.pars = list(type = "prob"))
+pred5 <- predict(m5, xitest)
+table(pred5, yitest)
+
+

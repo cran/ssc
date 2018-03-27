@@ -2,30 +2,26 @@
 % Please edit documentation in R/SNNRCE.R
 \name{predict.snnrce}
 \alias{predict.snnrce}
-\title{Model Predictions}
+\title{Predictions of the SNNRCE method}
 \usage{
 \method{predict}{snnrce}(object, x, ...)
 }
 \arguments{
-\item{object}{SNNRCE model object built with \code{\link{snnrce}} function.}
+\item{object}{SNNRCE model built with the \code{\link{snnrce}} function.}
 
 \item{x}{A object that can be coerced as matrix.
-Depending on how was the model built, \code{x} is interpreted as a matrix
-with the distances between the unseen instances and the selected training instances,
+Depending on how was the model built, \code{x} is interpreted as a matrix 
+with the distances between the unseen instances and the selected training instances, 
 or a matrix of instances.}
 
-\item{...}{Additional objects that can be coerced as matrix.
-Depending on how was the model built, this objects are used or ignored.
-This objects are interpreted as matrices of distances between the unseen instances
-and the selected training instances.}
+\item{...}{This parameter is included for compatibility reasons.}
 }
 \value{
-Vector with labels of instances.
+Vector with the labels assigned.
 }
 \description{
-Predicts the label of instances according to SNNRCE model.
+Predicts the label of instances according to the \code{snnrce} model.
 }
 \details{
 For additional help see \code{\link{snnrce}} examples.
 }
-
