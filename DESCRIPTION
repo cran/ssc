@@ -1,7 +1,7 @@
 Package: ssc
 Type: Package
 Title: Semi-Supervised Classification Methods
-Version: 2.0.0
+Version: 2.1-0
 Authors@R: c(person("Mabel", "González", role = "aut",
                     email = "mabelc@correo.ugr.es",
                     comment = c(ORCID = "0000-0003-0152-444X")),
@@ -33,14 +33,16 @@ Description: Provides a collection of self-labeled techniques for semi-supervise
 	can be shown to perform better than classical supervised classifiers.
 Depends: R (>= 3.2.3)
 Imports: stats, proxy
-Suggests: caret, e1071, C50, kernlab, testthat
+Suggests: caret, e1071, C50, kernlab, testthat, timeDate, stringi,
+        R.rsp
+VignetteBuilder: R.rsp
 License: GPL (>= 3)
 URL: https://github.com/mabelc/SSC
 BugReports: https://github.com/mabelc/SSC/issues
 Encoding: UTF-8
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.0
 NeedsCompilation: no
-Packaged: 2018-03-26 17:32:39 UTC; osmani
+Packaged: 2019-12-15 20:56:23 UTC; bergmeir
 Author: Mabel González [aut] (<https://orcid.org/0000-0003-0152-444X>),
   Osmani Rosado-Falcón [aut] (<https://orcid.org/0000-0002-2639-3354>),
   José Daniel Rodríguez [aut] (<https://orcid.org/0000-0002-8489-4106>),
@@ -49,4 +51,4 @@ Author: Mabel González [aut] (<https://orcid.org/0000-0003-0152-444X>),
   José Manuel Benítez [ths] (<https://orcid.org/0000-0002-2346-0793>)
 Maintainer: Christoph Bergmeir <c.bergmeir@decsai.ugr.es>
 Repository: CRAN
-Date/Publication: 2018-03-27 04:00:31 UTC
+Date/Publication: 2019-12-15 21:30:02 UTC
